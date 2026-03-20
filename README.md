@@ -32,7 +32,7 @@ The product also exposes public shipment tracking by tracking ID with QR support
 ## 4. Architecture Overview
 
 The app uses Next.js App Router for page routing and Route Handlers for API endpoints under `app/api`.
-Business logic and integrations are centralized in `lib/` (auth, db, jwt, cache, realtime, media, mail, ETA).
+Business logic and integrations are centralized in `lib/` (auth, db, jwt, cache, realtime, media, mail, ETA, tenant domain).
 MongoDB is accessed via Mongoose models in `models/`, with tenant scoping on domain entities.
 Authentication is cookie-based JWT; a central `proxy.js` enforces auth, RBAC, and injects user context headers.
 Background email sending is queued from shipment status updates via QStash and processed by `/api/worker/send-email`.
@@ -63,9 +63,11 @@ Background email sending is queued from shipment status updates via QStash and p
 												  │
 												  v
   ┌──────────────────────────────────── API Layer (app/api/*) ────────────────────────────────────────┐
-  │  Auth: /api/auth/*                         Public: /api/public/plans, /api/track/*                │
-  │  SA:   /api/sa/*                           CA:     /api/ca/*                                       │
-  │  AG:   /api/ag/*                           Shared: /api/upload, /api/notifications                 │
+	│  Auth: /api/auth/*                         Public: /api/public/plans, /api/track/*                │
+	│  SA:   /api/sa/* (plans, tenants, analytics, audit logs)                                           │
+	│  CA:   /api/ca/* (agents, hubs, shipments, assign-hub/assign-agent, events)                       │
+	│  AG:   /api/ag/* (assigned shipments, status update, proof upload, location)                      │
+	│  Shared: /api/upload, /api/notifications                                                           │
   │  Worker:/api/worker/send-email             (QStash-signed webhook consumer)                       │
   └───────────────────────────────────────────────┬───────────────────────────────────────────────────┘
 												  │
@@ -121,6 +123,7 @@ Company Admin (CA)
 - Tenant-scoped CRUD for agents and hubs
 - Tenant-scoped shipment CRUD with filters, pagination, and search
 - Shipment workflow: assign hub first, then assign available active agent
+- Agent operations: toggle availability and view per-agent shipment history/summary
 - QR code generation for each shipment tracking URL
 - Shipment event timeline and proof-of-delivery visibility
 - Operational dashboard with status charts and live agent map updates
@@ -145,13 +148,14 @@ Cross-cutting
 - In-memory API rate limiting in `proxy.js`
 - Redis caching for plans, tenants, analytics, shipment lists, and public tracking
 - Async email notifications through QStash + worker signature verification
+- In-app notification feed endpoint (`/api/notifications`) used by SA notification UI
 - Tenant activity guard: creation operations blocked when tenant is suspended
 
 ## 6. Project Structure
 
 ```text
 app/
-├── api/            -> Route Handlers (auth, SA/CA/AG, tracking, upload, worker)
+├── api/            -> Route Handlers (auth, SA/CA/AG, tracking, upload, notifications, worker)
 ├── sa/             -> Super Admin pages
 ├── ca/             -> Company Admin pages
 ├── ag/             -> Agent pages
@@ -169,6 +173,7 @@ lib/
 ├── imagekit.js     -> ImageKit client
 ├── mailer.js       -> Nodemailer transporter
 ├── eta.js          -> ETA calculation logic
+├── tenantDomain.js -> Tenant domain normalization + unique domain generation
 └── validations.js  -> Zod schemas
 
 models/             -> Mongoose models (User, Tenant, Shipment, Agent, etc.)
