@@ -1,5 +1,6 @@
 import connectDB from '@/lib/db'
 import Shipment from '@/models/Shipment'
+import ShipmentEvent from '@/models/ShipmentEvent'
 import redis from '@/lib/redis'
 import { updateShipmentSchema } from '@/lib/validations'
 import { calculateEstimatedDeliveryDate } from '@/lib/eta'
@@ -44,13 +45,14 @@ export async function PUT(request, { params }) {
 
     const h = await headers()
     const tenantId = h.get('x-tenant-id')
+    const userId = h.get('x-user-id')
 
     await connectDB()
     const shipment = await Shipment.findOne({ _id: id, tenant_id: tenantId })
     if (!shipment) return Response.json({ error: 'Shipment not found' }, { status: 404 })
 
-    if (shipment.currentStatus !== 'Created') {
-      return Response.json({ error: 'Shipment can only be edited while in Created status' }, { status: 400 })
+    if (shipment.currentStatus === 'Delivered') {
+      return Response.json({ error: 'Delivered shipments cannot be edited' }, { status: 400 })
     }
 
     Object.assign(shipment, parsed.data)
@@ -65,9 +67,26 @@ export async function PUT(request, { params }) {
 
     await shipment.save()
 
+    await ShipmentEvent.create({
+      shipment_id: shipment._id,
+      tenant_id: tenantId,
+      status: shipment.currentStatus,
+      note: 'Shipment details updated',
+      updatedBy: userId,
+    })
+
     await invalidateShipmentCaches(tenantId)
     await redis.del(`track:${shipment.trackingId}`)
-    await writeAuditLog({ actor_id: h.get('x-user-id'), tenant_id: tenantId, action: 'UPDATE', entity: 'Shipment', entity_id: id, metadata: {} })
+    await writeAuditLog({
+      actor_id: userId,
+      tenant_id: tenantId,
+      action: 'UPDATE',
+      entity: 'Shipment',
+      entity_id: id,
+      metadata: {
+        fieldsUpdated: Object.keys(parsed.data),
+      },
+    })
 
     return Response.json({ shipment })
   } catch (err) {

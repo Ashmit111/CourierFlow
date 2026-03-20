@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react'
 export default function AgentMap({ locations = [], singleLocation = null }) {
   const mapRef = useRef(null)
   const mapInstance = useRef(null)
+  const leafletRef = useRef(null)
   const markersRef = useRef([])
 
   useEffect(() => {
@@ -12,6 +13,7 @@ export default function AgentMap({ locations = [], singleLocation = null }) {
 
     // Dynamically import leaflet CSS and library
     import('leaflet').then((L) => {
+      leafletRef.current = L
       const link = document.createElement('link')
       link.rel = 'stylesheet'
       link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
@@ -33,9 +35,8 @@ export default function AgentMap({ locations = [], singleLocation = null }) {
       const map = L.map(mapRef.current).setView(defaultCenter, singleLocation ? 13 : 5)
       mapInstance.current = map
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors, © CARTO',
-        subdomains: 'abcd',
         maxZoom: 20
       }).addTo(map)
 
@@ -51,7 +52,7 @@ export default function AgentMap({ locations = [], singleLocation = null }) {
         html: `<div style="
           width:32px;height:32px;
           background:var(--accent-primary,#F59E0B);
-          border:3px solid var(--surface-2);
+          border:3px solid #ffffff;
           border-radius:50% 50% 50% 0;
           transform:rotate(-45deg);
           box-shadow:0 0 15px rgba(245,158,11,0.5);
@@ -62,15 +63,16 @@ export default function AgentMap({ locations = [], singleLocation = null }) {
         iconAnchor: [16, 32],
       })
 
-      if (singleLocation?.lat) {
+      if (typeof singleLocation?.lat === 'number' && typeof singleLocation?.lng === 'number') {
         const m = L.marker([singleLocation.lat, singleLocation.lng], { icon: agentIcon })
           .addTo(map)
           .bindPopup(`<strong>Agent Location</strong><br>Updated: ${singleLocation.updatedAt ? new Date(singleLocation.updatedAt).toLocaleTimeString() : '—'}`)
         markersRef.current.push(m)
+        map.setView([singleLocation.lat, singleLocation.lng], Math.max(map.getZoom(), 13))
       }
 
       locations.forEach((loc) => {
-        if (!loc?.lat) return
+        if (typeof loc?.lat !== 'number' || typeof loc?.lng !== 'number') return
         const m = L.marker([loc.lat, loc.lng], { icon: agentIcon })
           .addTo(map)
           .bindPopup(`<strong>${loc.name || 'Agent'}</strong><br>${loc.updatedAt ? new Date(loc.updatedAt).toLocaleTimeString() : ''}`)
@@ -86,6 +88,47 @@ export default function AgentMap({ locations = [], singleLocation = null }) {
     }
   }, [])
 
+  useEffect(() => {
+    if (!mapInstance.current || !leafletRef.current) return
+
+    const L = leafletRef.current
+    const map = mapInstance.current
+
+    markersRef.current.forEach((m) => m.remove())
+    markersRef.current = []
+
+    const agentIcon = L.divIcon({
+      html: `<div style="
+        width:32px;height:32px;
+        background:var(--accent-primary,#F59E0B);
+        border:3px solid #ffffff;
+        border-radius:50% 50% 50% 0;
+        transform:rotate(-45deg);
+        box-shadow:0 0 15px rgba(245,158,11,0.5);
+        display:flex;align-items:center;justify-content:center;
+      "><span style="transform:rotate(45deg);font-size:14px">🛵</span></div>`,
+      className: '',
+      iconSize: [32, 32],
+      iconAnchor: [16, 32],
+    })
+
+    if (typeof singleLocation?.lat === 'number' && typeof singleLocation?.lng === 'number') {
+      const m = L.marker([singleLocation.lat, singleLocation.lng], { icon: agentIcon })
+        .addTo(map)
+        .bindPopup(`<strong>Agent Location</strong><br>Updated: ${singleLocation.updatedAt ? new Date(singleLocation.updatedAt).toLocaleTimeString() : '—'}`)
+      markersRef.current.push(m)
+      map.setView([singleLocation.lat, singleLocation.lng], Math.max(map.getZoom(), 13))
+    }
+
+    locations.forEach((loc) => {
+      if (typeof loc?.lat !== 'number' || typeof loc?.lng !== 'number') return
+      const m = L.marker([loc.lat, loc.lng], { icon: agentIcon })
+        .addTo(map)
+        .bindPopup(`<strong>${loc.name || 'Agent'}</strong><br>${loc.updatedAt ? new Date(loc.updatedAt).toLocaleTimeString() : ''}`)
+      markersRef.current.push(m)
+    })
+  }, [singleLocation, locations])
+
   return (
     <div
       ref={mapRef}
@@ -94,7 +137,7 @@ export default function AgentMap({ locations = [], singleLocation = null }) {
         width: '100%',
         height: '100%',
         minHeight: 300,
-        background: 'var(--surface-2)',
+        background: '#f3f4f6',
       }}
     />
   )

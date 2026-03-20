@@ -368,7 +368,7 @@ function TrackComponent() {
             </div>
 
             {/* Agent Map */}
-            {result.agentLocation?.lat && (
+            {typeof result.agentLocation?.lat === 'number' && typeof result.agentLocation?.lng === 'number' && (
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
                 <div style={{ padding: '0.875rem 1rem', borderBottom: '1px solid var(--border)', fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <Navigation size={16} /> Agent live location

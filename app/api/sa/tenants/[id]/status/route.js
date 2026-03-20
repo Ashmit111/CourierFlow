@@ -23,7 +23,7 @@ export async function PATCH(request, { params }) {
     const h = await headers()
     await writeAuditLog({
       actor_id: h.get('x-user-id'),
-      tenant_id: null,
+      tenant_id: id,
       action: 'UPDATE',
       entity: 'Tenant',
       entity_id: id,

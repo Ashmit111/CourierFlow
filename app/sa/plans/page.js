@@ -116,9 +116,9 @@ export default function SAPlansPage() {
   }
 
   const planIcons = { 
-    Basic: <Sprout size={40} className="text-success" />, 
-    Pro: <Zap size={40} className="text-warning" />, 
-    Enterprise: <Trophy size={40} className="text-primary" /> 
+    Basic: <Sprout size={36} color="var(--text-primary)" />, 
+    Pro: <Zap size={36} color="var(--text-primary)" />, 
+    Enterprise: <Trophy size={36} color="#f59e0b" /> 
   }
 
   return (
@@ -138,50 +138,42 @@ export default function SAPlansPage() {
       ) : (
         <div className="grid-3">
           {plans.map((plan) => (
-            <div key={plan._id} className="card card-elevated" style={{ position: 'relative' }}>
-              <div className="card-body">
-                <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+            <div key={plan._id} className="card card-elevated" style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
+              <div className="card-body" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
-                    {planIcons[plan.name] || <ClipboardList size={40} />}
+                    {planIcons[plan.name] || <ClipboardList size={36} color="var(--text-primary)" />}
                   </div>
-                  <h3 style={{ fontSize: '1.25rem', fontFamily: 'var(--font-display)', fontWeight: 800, marginBottom: '0.5rem' }}>{plan.name}</h3>
-                  <div style={{ fontSize: '2rem', fontFamily: 'var(--font-display)', fontWeight: 800, color: 'var(--accent-primary)' }}>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '1rem' }}>{plan.name}</h3>
+                  <div style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                     ${plan.price}
-                    <span style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-muted)' }}>/mo</span>
+                    <span style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--text-muted)' }}>/mo</span>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
                   {[
                     ['Shipments', plan.maxShipments >= 999999 ? 'Unlimited' : plan.maxShipments.toLocaleString()],
-                    ['Agents', plan.maxAgents >= 999999 ? 'Unlimited' : plan.maxAgents],
-                    ['Hubs', plan.maxHubs >= 999999 ? 'Unlimited' : plan.maxHubs],
+                    ['Agents', plan.maxAgents >= 999999 ? 'Unlimited' : plan.maxAgents.toLocaleString()],
+                    ['Hubs', plan.maxHubs >= 999999 ? 'Unlimited' : plan.maxHubs.toLocaleString()],
                   ].map(([k, v]) => (
-                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
                       <span style={{ color: 'var(--text-muted)' }}>{k}</span>
-                      <span style={{ fontWeight: 600 }}>{v}</span>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{v}</span>
                     </div>
                   ))}
                 </div>
 
-                {plan.features?.length > 0 && (
-                  <div style={{ marginBottom: '1.25rem' }}>
-                    {plan.features.map((f) => (
-                      <div key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-                        <Check size={14} className="text-success" style={{ flexShrink: 0, marginTop: '0.1rem' }} />
-                        <span>{f}</span>
-                      </div>
-                    ))}
+                <div style={{ marginTop: 'auto' }}>
+                  <div style={{ height: '1px', backgroundColor: 'var(--border)', margin: '1.5rem 0' }} />
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'center' }}>
+                    <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem' }} onClick={() => setModal({ type: 'edit', plan })}>
+                      <Edit2 size={16} /> Edit
+                    </button>
+                    <button className="btn btn-ghost btn-icon" style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem' }} onClick={() => handleDelete(plan._id, plan.name)} title="Delete Plan">
+                      <Trash2 size={18} />
+                    </button>
                   </div>
-                )}
-
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto' }}>
-                  <button className="btn btn-outline w-full btn-sm" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} onClick={() => setModal({ type: 'edit', plan })}>
-                    <Edit2 size={16} /> Edit
-                  </button>
-                  <button className="btn btn-ghost btn-sm btn-icon" style={{ color: 'var(--danger)', flexShrink: 0 }} onClick={() => handleDelete(plan._id, plan.name)} title="Delete Plan">
-                    <Trash2 size={18} />
-                  </button>
                 </div>
               </div>
             </div>

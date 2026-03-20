@@ -89,21 +89,45 @@ export default function EditShipmentPage({ params }) {
   const { register, handleSubmit, reset, formState: { errors } } = useForm({ resolver: zodResolver(editSchema) })
 
   useEffect(() => {
-    fetch(`/api/ca/shipments/${id}`)
-      .then((r) => r.json())
-      .then((data) => {
+    let mounted = true
+
+    async function loadShipment() {
+      try {
+        const r = await fetch(`/api/ca/shipments/${id}`)
+        const data = await r.json()
+
+        if (!mounted) return
+
         const s = data.shipment
-        if (!s) { router.push('/ca/shipments'); return }
-        if (s.currentStatus !== 'Created') {
-          toast.error('Only shipments in "Created" status can be edited')
+        if (!r.ok || !s) {
+          toast.error(data.error || 'Shipment not found')
+          router.push('/ca/shipments')
+          return
+        }
+
+        if (s.currentStatus === 'Delivered') {
+          toast.error('Delivered shipments cannot be edited')
           router.push(`/ca/shipments/${id}`)
           return
         }
+
         setShipment(s)
         reset({ sender: s.sender, receiver: s.receiver, description: s.description, weight: s.weight })
-        setFetching(false)
-      })
-  }, [id])
+      } catch {
+        if (!mounted) return
+        toast.error('Failed to load shipment details')
+        router.push(`/ca/shipments/${id}`)
+      } finally {
+        if (mounted) setFetching(false)
+      }
+    }
+
+    loadShipment()
+
+    return () => {
+      mounted = false
+    }
+  }, [id, reset, router, toast])
 
   async function onSubmit(data) {
     setLoading(true)
@@ -121,47 +145,49 @@ export default function EditShipmentPage({ params }) {
   if (fetching) return <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading...</div>
 
   return (
-    <div style={{ maxWidth: 800 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-        <Link href={`/ca/shipments/${id}`} className="btn btn-ghost btn-sm">← Back</Link>
-        <div>
-          <h2 style={{ fontSize: '1.5rem', fontFamily: 'var(--font-display)', fontWeight: 800 }}>Edit Shipment</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontFamily: 'var(--font-mono)' }}>{shipment?.trackingId}</p>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div className="grid-2" style={{ gap: '1.5rem' }}>
-            <div className="card card-elevated"><div className="card-body"><ContactSection prefix="sender" title="📤 Sender" register={register} errors={errors} /></div></div>
-            <div className="card card-elevated"><div className="card-body"><ContactSection prefix="receiver" title="📥 Receiver" register={register} errors={errors} /></div></div>
+    <div style={{ width: '100%', display: 'flex', justifyContent: 'center', padding: '0 1rem 1.5rem' }}>
+      <div style={{ width: '100%', maxWidth: 980 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+          <Link href={`/ca/shipments/${id}`} className="btn btn-ghost btn-sm">← Back</Link>
+          <div>
+            <h2 style={{ fontSize: '1.5rem', fontFamily: 'var(--font-display)', fontWeight: 800 }}>Edit Shipment</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontFamily: 'var(--font-mono)' }}>{shipment?.trackingId}</p>
           </div>
+        </div>
 
-          <div className="card card-elevated">
-            <div className="card-header"><h3 style={{ fontSize: '1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>Package Details</h3></div>
-            <div className="card-body">
-              <div className="grid-2">
-                <div className="form-group">
-                  <label className="form-label">Weight (kg) *</label>
-                  <input type="number" step="0.1" className={`form-input ${errors.weight ? 'error' : ''}`} {...register('weight')} />
-                  {errors.weight && <span className="form-error">⚠ {errors.weight.message}</span>}
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Description</label>
-                  <input className="form-input" {...register('description')} />
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div className="grid-2" style={{ gap: '1.5rem' }}>
+              <div className="card card-elevated"><div className="card-body"><ContactSection prefix="sender" title="📤 Sender" register={register} errors={errors} /></div></div>
+              <div className="card card-elevated"><div className="card-body"><ContactSection prefix="receiver" title="📥 Receiver" register={register} errors={errors} /></div></div>
+            </div>
+
+            <div className="card card-elevated">
+              <div className="card-header"><h3 style={{ fontSize: '1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>Package Details</h3></div>
+              <div className="card-body">
+                <div className="grid-2">
+                  <div className="form-group">
+                    <label className="form-label">Weight (kg) *</label>
+                    <input type="number" step="0.1" className={`form-input ${errors.weight ? 'error' : ''}`} {...register('weight')} />
+                    {errors.weight && <span className="form-error">⚠ {errors.weight.message}</span>}
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Description</label>
+                    <input className="form-input" {...register('description')} />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-            <Link href={`/ca/shipments/${id}`} className="btn btn-outline">Cancel</Link>
-            <button type="submit" className="btn btn-primary btn-lg" disabled={loading}>
-              {loading ? <><span className="spinner" /> Saving...</> : 'Save Changes'}
-            </button>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <Link href={`/ca/shipments/${id}`} className="btn btn-outline">Cancel</Link>
+              <button type="submit" className="btn btn-primary btn-lg" disabled={loading}>
+                {loading ? <><span className="spinner" /> Saving...</> : 'Save Changes'}
+              </button>
+            </div>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   )
 }

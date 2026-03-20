@@ -37,6 +37,15 @@ export default function AGDashboard() {
 
   const active = shipments.filter((s) => !['Delivered', 'Failed', 'Returned'].includes(s.currentStatus))
   const completed = shipments.filter((s) => ['Delivered', 'Returned'].includes(s.currentStatus))
+  const assignedTotal = shipments.length
+
+  const startOfToday = new Date()
+  startOfToday.setHours(0, 0, 0, 0)
+
+  const assignedToday = shipments.filter((s) => {
+    const assignedDate = s.assignedAt ? new Date(s.assignedAt) : new Date(s.createdAt)
+    return assignedDate >= startOfToday
+  }).length
 
   return (
     <div>
@@ -63,10 +72,11 @@ export default function AGDashboard() {
       </div>
 
       {/* Stats */}
-      <div className="grid-3" style={{ marginBottom: '1.5rem', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+      <div className="grid-4" style={{ marginBottom: '1.5rem', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' }}>
         {[
           { label: 'Active',    value: active.length,     color: 'var(--accent-primary)', icon: <Truck size={16} /> },
-          { label: 'Today',     value: shipments.length,  color: 'var(--warning)', icon: <Package size={16} /> },
+          { label: 'Assigned Today', value: assignedToday, color: 'var(--warning)', icon: <Package size={16} /> },
+          { label: 'Assigned Total', value: assignedTotal, color: 'var(--accent-primary)', icon: <Package size={16} /> },
           { label: 'Completed', value: completed.length,  color: 'var(--success)',  icon: <CheckCircle2 size={16} /> },
         ].map((s) => (
           <div key={s.label} className="stat-card card-elevated" style={{ padding: '0.75rem', borderRadius: 12 }}>

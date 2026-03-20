@@ -5,11 +5,16 @@ import { use } from 'react'
 import Link from 'next/link'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/ui/Toast'
+import { Package, CheckCircle2, XCircle, Building2, Users } from 'lucide-react'
 
 export default function SATenantDetailPage({ params }) {
   const { id } = use(params)
   const toast = useToast()
   const [tenant, setTenant] = useState(null)
+  const [summary, setSummary] = useState(null)
+  const [shipments, setShipments] = useState([])
+  const [hubs, setHubs] = useState([])
+  const [agents, setAgents] = useState([])
   const [loading, setLoading] = useState(true)
   const [plans, setPlans] = useState([])
   const [assignPlan, setAssignPlan] = useState(false)
@@ -22,6 +27,10 @@ export default function SATenantDetailPage({ params }) {
       fetch('/api/sa/plans').then((r) => r.json()),
     ]).then(([td, pd]) => {
       setTenant(td.tenant)
+      setSummary(td.summary || null)
+      setShipments(td.shipments || [])
+      setHubs(td.hubs || [])
+      setAgents(td.agents || [])
       setPlans(pd.plans || [])
       setSelectedPlan(td.tenant?.subscriptionPlan?._id || '')
       setLoading(false)
@@ -44,6 +53,15 @@ export default function SATenantDetailPage({ params }) {
 
   if (loading) return <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div>
   if (!tenant) return <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--danger)' }}>Tenant not found</div>
+
+  const derivedSummary = {
+    totalShipments: shipments.length,
+    deliveredShipments: shipments.filter((s) => s.currentStatus === 'Delivered').length,
+    failedShipments: shipments.filter((s) => s.currentStatus === 'Failed').length,
+    totalHubs: hubs.length,
+    totalAgents: agents.length,
+  }
+  const ops = summary || derivedSummary
 
   return (
     <div>
@@ -99,27 +117,107 @@ export default function SATenantDetailPage({ params }) {
         </div>
 
         <div className="card card-elevated">
-          <div className="card-header"><h3 style={{ fontSize: '1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>Subscription Plan</h3></div>
+          <div className="card-header"><h3 style={{ fontSize: '1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>Tenant Operations</h3></div>
           <div className="card-body">
-            {tenant.subscriptionPlan ? (
-              <div>
-                <div style={{ fontWeight: 800, fontSize: '1.25rem', fontFamily: 'var(--font-display)', marginBottom: '0.5rem' }}>{tenant.subscriptionPlan.name}</div>
-                <div style={{ fontSize: '1.75rem', fontFamily: 'var(--font-display)', fontWeight: 800, color: 'var(--accent-primary)', marginBottom: '1rem' }}>
-                  ${tenant.subscriptionPlan.price}<span style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-muted)' }}>/month</span>
-                </div>
-                {tenant.subscriptionPlan.features?.map((f) => (
-                  <div key={f} style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>✓ {f}</div>
+            <div>
+              <div className="grid-2" style={{ gap: '0.75rem', marginBottom: '1rem' }}>
+                {[
+                  { label: 'Total Shipments', value: ops.totalShipments, icon: <Package size={16} />, color: 'var(--primary)' },
+                  { label: 'Delivered', value: ops.deliveredShipments, icon: <CheckCircle2 size={16} />, color: 'var(--success)' },
+                  { label: 'Failed', value: ops.failedShipments, icon: <XCircle size={16} />, color: 'var(--danger)' },
+                  { label: 'Total Hubs', value: ops.totalHubs, icon: <Building2 size={16} />, color: 'var(--accent-secondary)' },
+                  { label: 'Total Agents', value: ops.totalAgents, icon: <Users size={16} />, color: 'var(--accent-primary)' },
+                ].map((metric) => (
+                  <div key={metric.label} style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.65rem 0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: metric.color, marginBottom: '0.25rem' }}>
+                      {metric.icon}
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{metric.label}</span>
+                    </div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, fontFamily: 'var(--font-display)' }}>{metric.value}</div>
+                  </div>
                 ))}
               </div>
-            ) : (
-              <div className="empty-state" style={{ padding: '1rem' }}>
-                <div style={{ fontSize: '0.875rem' }}>No plan assigned</div>
-                <button className="btn btn-primary btn-sm" style={{ marginTop: '0.75rem' }} onClick={() => setAssignPlan(true)}>
-                  Assign Plan
-                </button>
+
+              <div style={{ marginBottom: '0.75rem' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.5rem' }}>
+                  Hubs ({ops.totalHubs})
+                </div>
+                {hubs.length > 0 ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                    {hubs.map((hub) => (
+                      <span key={hub._id} className="badge" style={{ fontSize: '0.72rem' }}>
+                        {hub.name} ({hub.city})
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '0.825rem', color: 'var(--text-muted)' }}>No hubs available</div>
+                )}
               </div>
-            )}
+
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.5rem' }}>
+                  Agents ({ops.totalAgents})
+                </div>
+                {agents.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    {agents.map((agent) => (
+                      <div key={agent._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', fontSize: '0.8rem', padding: '0.4rem 0.6rem', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-2)' }}>
+                        <span>{agent.user_id?.name || 'Unnamed Agent'}</span>
+                        <span style={{ color: agent.isAvailable ? 'var(--success)' : 'var(--warning)' }}>
+                          {agent.isAvailable ? 'Available' : 'Busy'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '0.825rem', color: 'var(--text-muted)' }}>No agents available</div>
+                )}
+                </div>
+            </div>
           </div>
+        </div>
+      </div>
+
+      <div className="card card-elevated" style={{ marginTop: '1rem' }}>
+        <div className="card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <h3 style={{ fontSize: '1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>Tenant Shipments</h3>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{shipments.length} total</span>
+        </div>
+        <div className="table-wrap">
+          {shipments.length > 0 ? (
+            <table>
+              <thead>
+                <tr>
+                  <th>Tracking ID</th>
+                  <th>Status</th>
+                  <th>Route</th>
+                  <th style={{ textAlign: 'right' }}>Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shipments.map((shipment) => (
+                  <tr key={shipment._id}>
+                    <td>
+                      <code style={{ fontSize: '0.82rem', fontFamily: 'var(--font-mono)' }}>{shipment.trackingId}</code>
+                    </td>
+                    <td><StatusBadge status={shipment.currentStatus} /></td>
+                    <td style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>
+                      {shipment.sender?.city || '—'} → {shipment.receiver?.city || '—'}
+                    </td>
+                    <td style={{ textAlign: 'right', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                      {new Date(shipment.createdAt).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="empty-state" style={{ margin: '0.75rem' }}>
+              <div className="empty-icon">📦</div>
+              <div>No shipments</div>
+            </div>
+          )}
         </div>
       </div>
 

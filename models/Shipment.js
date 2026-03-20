@@ -37,6 +37,7 @@ const ShipmentSchema = new mongoose.Schema(
     },
     assignedHub: { type: mongoose.Schema.Types.ObjectId, ref: 'Hub', default: null },
     assignedAgent: { type: mongoose.Schema.Types.ObjectId, ref: 'Agent', default: null },
+    assignedAt: { type: Date, default: null },
     estimatedDelivery: { type: Date, default: null },
     qrCodeUrl: { type: String, default: null },
     proofOfDelivery: { type: ProofOfDeliverySchema, default: null },

@@ -104,7 +104,7 @@ export async function POST(request) {
     const h = await headers()
     await writeAuditLog({
       actor_id: h.get('x-user-id'),
-      tenant_id: null,
+      tenant_id: tenant._id,
       action: 'CREATE',
       entity: 'Tenant',
       entity_id: tenant._id,

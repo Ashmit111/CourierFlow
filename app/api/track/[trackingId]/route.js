@@ -28,7 +28,7 @@ export async function GET(request, { params }) {
     const terminalStatuses = ['Delivered', 'Returned', 'Failed']
     if (!terminalStatuses.includes(shipment.currentStatus) && shipment.assignedAgent) {
       const agent = await Agent.findById(shipment.assignedAgent)
-      if (agent?.currentLocation?.lat) {
+      if (typeof agent?.currentLocation?.lat === 'number' && typeof agent?.currentLocation?.lng === 'number') {
         agentLocation = agent.currentLocation
       }
     }

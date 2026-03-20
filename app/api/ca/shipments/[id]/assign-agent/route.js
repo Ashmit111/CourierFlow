@@ -48,6 +48,7 @@ export async function POST(request, { params }) {
     }
 
     shipment.assignedAgent = agent._id
+    shipment.assignedAt = new Date()
     await shipment.save()
 
     for (let p = 1; p <= 5; p++) await redis.del(`shipments:${tenantId}:page:${p}`)

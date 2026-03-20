@@ -116,55 +116,57 @@ export default function CreateShipmentPage() {
   }
 
   return (
-    <div style={{ maxWidth: 800 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-        <Link href="/ca/shipments" className="btn btn-ghost btn-sm">← Back</Link>
-        <div>
-          <h2 style={{ fontSize: '1.5rem', fontFamily: 'var(--font-display)', fontWeight: 800 }}>Create Shipment</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>A QR code will be auto-generated on save</p>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {/* Sender + Receiver */}
-          <div className="grid-2" style={{ gap: '1.5rem' }}>
-            <div className="card card-elevated"><div className="card-body"><ContactSection prefix="sender" title="📤 Sender" register={register} errors={errors} /></div></div>
-            <div className="card card-elevated"><div className="card-body"><ContactSection prefix="receiver" title="📥 Receiver" register={register} errors={errors} /></div></div>
+    <div style={{ width: '100%', display: 'flex', justifyContent: 'center', padding: '0 1rem 1.5rem' }}>
+      <div style={{ width: '100%', maxWidth: 980 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+          <Link href="/ca/shipments" className="btn btn-ghost btn-sm">← Back</Link>
+          <div>
+            <h2 style={{ fontSize: '1.5rem', fontFamily: 'var(--font-display)', fontWeight: 800 }}>Create Shipment</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>A QR code will be auto-generated on save</p>
           </div>
+        </div>
 
-          {/* Package Details */}
-          <div className="card card-elevated">
-            <div className="card-header"><h3 style={{ fontSize: '1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>Package Details</h3></div>
-            <div className="card-body">
-              <div className="grid-2">
-                <div className="form-group">
-                  <label className="form-label">Weight (kg) *</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    className={`form-input ${errors.weight ? 'error' : ''}`}
-                    {...register('weight')}
-                    placeholder="1.5"
-                  />
-                  {errors.weight && <span className="form-error">⚠ {errors.weight.message}</span>}
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Description</label>
-                  <input className="form-input" {...register('description')} placeholder="Electronics, books, etc." />
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {/* Sender + Receiver */}
+            <div className="grid-2" style={{ gap: '1.5rem' }}>
+              <div className="card card-elevated"><div className="card-body"><ContactSection prefix="sender" title="📤 Sender" register={register} errors={errors} /></div></div>
+              <div className="card card-elevated"><div className="card-body"><ContactSection prefix="receiver" title="📥 Receiver" register={register} errors={errors} /></div></div>
+            </div>
+
+            {/* Package Details */}
+            <div className="card card-elevated">
+              <div className="card-header"><h3 style={{ fontSize: '1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>Package Details</h3></div>
+              <div className="card-body">
+                <div className="grid-2">
+                  <div className="form-group">
+                    <label className="form-label">Weight (kg) *</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      className={`form-input ${errors.weight ? 'error' : ''}`}
+                      {...register('weight')}
+                      placeholder="1.5"
+                    />
+                    {errors.weight && <span className="form-error">⚠ {errors.weight.message}</span>}
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Description</label>
+                    <input className="form-input" {...register('description')} placeholder="Electronics, books, etc." />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-            <Link href="/ca/shipments" className="btn btn-outline">Cancel</Link>
-            <button id="create-shipment-submit" type="submit" className="btn btn-primary btn-lg" disabled={loading}>
-              {loading ? <><span className="spinner" /> Creating...</> : '📦 Create & Generate QR Code'}
-            </button>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <Link href="/ca/shipments" className="btn btn-outline">Cancel</Link>
+              <button id="create-shipment-submit" type="submit" className="btn btn-primary btn-lg" disabled={loading}>
+                {loading ? <><span className="spinner" /> Adding...</> : '📦 Add Shipment'}
+              </button>
+            </div>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   )
 }

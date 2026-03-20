@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Edit2, Ban, UserCheck, UserMinus } from 'lucide-react'
+import { Edit2, Ban, UserCheck, UserMinus, Eye } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createAgentSchema, updateAgentSchema } from '@/lib/validations'
 import DataTable from '@/components/shared/DataTable'
 import ConfirmModal from '@/components/shared/ConfirmModal'
+import Link from 'next/link'
 
 function AgentModal({ agent, onClose, onSaved }) {
   const toast = useToast()
@@ -187,6 +188,9 @@ export default function CAAgentsPage() {
                 <button className={`btn btn-ghost btn-sm btn-icon ${a.isAvailable ? 'text-warning' : 'text-success'}`} onClick={() => handleToggleAvailability(a)} title={a.isAvailable ? 'Mark Busy' : 'Mark Available'}>
                   {a.isAvailable ? <UserMinus size={18} /> : <UserCheck size={18} />}
                 </button>
+                <Link href={`/ca/agents/${a._id}`} className="btn btn-ghost btn-sm btn-icon" title="View Shipments">
+                  <Eye size={18} />
+                </Link>
                 <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setModal({ type: 'edit', agent: a })} title="Edit">
                   <Edit2 size={18} />
                 </button>

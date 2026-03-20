@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { ArrowUpRight, ArrowDownRight, Package, QrCode, Clock, Navigation, ShieldCheck } from 'lucide-react'
 import StatusBadge from '@/components/shared/StatusBadge'
 import Timeline from '@/components/shared/Timeline'
 import { useToast } from '@/components/ui/Toast'
@@ -81,7 +82,7 @@ export default function ShipmentDetailPage({ params }) {
   if (loading) return <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading...</div>
   if (!shipment) return <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--danger)' }}>Shipment not found</div>
 
-  const canEdit = shipment.currentStatus === 'Created'
+  const canEdit = shipment.currentStatus !== 'Delivered'
   const activeHubs = hubs.filter((h) => h.isActive)
   const assignableAgents = agents.filter((a) => a.isAvailable && a.user_id?.isActive)
 
@@ -107,8 +108,10 @@ export default function ShipmentDetailPage({ params }) {
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <button className="btn btn-outline btn-sm" onClick={() => setAssignHub(true)}>Assign Hub</button>
           <button className="btn btn-outline btn-sm" onClick={() => setAssignAgent(true)}>Assign Agent</button>
-          {canEdit && (
-            <Link href={`/ca/shipments/${id}/edit`} className="btn btn-outline btn-sm">Edit</Link>
+          {canEdit ? (
+            <Link href={`/ca/shipments/${id}/edit`} className="btn btn-outline btn-sm">Edit Details</Link>
+          ) : (
+            <button className="btn btn-outline btn-sm" disabled title="Delivered shipments cannot be edited">Edit Locked</button>
           )}
           {shipment.qrCodeUrl && (
             <a href={shipment.qrCodeUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">
@@ -118,10 +121,19 @@ export default function ShipmentDetailPage({ params }) {
         </div>
       </div>
 
-      <div className="grid-2" style={{ marginBottom: '1.5rem' }}>
+      {!canEdit && (
+        <div style={{ marginBottom: '1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+          Shipment details can be edited until status becomes <strong>Delivered</strong>.
+        </div>
+      )}
+
+      <div className="grid-4" style={{ marginBottom: '1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
         {/* Sender */}
-        <div className="card card-elevated">
-          <div className="card-header"><h3 style={{ fontSize: '1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>📤 Sender</h3></div>
+        <div className="card card-elevated" style={{ margin: 0, height: '100%' }}>
+          <div className="card-header" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <ArrowUpRight size={18} className="text-warning" />
+            <h3 style={{ fontSize: '1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>Sender</h3>
+          </div>
           <div className="card-body">
             {[
               ['Name', shipment.sender?.name],
@@ -130,16 +142,19 @@ export default function ShipmentDetailPage({ params }) {
               ['Address', shipment.sender?.address],
             ].map(([k, v]) => (
               <div key={k} style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-                <span style={{ color: 'var(--text-muted)', minWidth: 70 }}>{k}</span>
-                <span>{v || '—'}</span>
+                <span style={{ color: 'var(--text-muted)', minWidth: 60 }}>{k}</span>
+                <span style={{ wordBreak: 'break-word' }}>{v || '—'}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Receiver */}
-        <div className="card card-elevated">
-          <div className="card-header"><h3 style={{ fontSize: '1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>📥 Receiver</h3></div>
+        <div className="card card-elevated" style={{ margin: 0, height: '100%' }}>
+          <div className="card-header" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <ArrowDownRight size={18} className="text-success" />
+            <h3 style={{ fontSize: '1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>Receiver</h3>
+          </div>
           <div className="card-body">
             {[
               ['Name', shipment.receiver?.name],
@@ -148,77 +163,96 @@ export default function ShipmentDetailPage({ params }) {
               ['Address', shipment.receiver?.address],
             ].map(([k, v]) => (
               <div key={k} style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-                <span style={{ color: 'var(--text-muted)', minWidth: 70 }}>{k}</span>
-                <span>{v || '—'}</span>
+                <span style={{ color: 'var(--text-muted)', minWidth: 60 }}>{k}</span>
+                <span style={{ wordBreak: 'break-word' }}>{v || '—'}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Shipment Info */}
-        <div className="card card-elevated">
-          <div className="card-header"><h3 style={{ fontSize: '1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>Package Info</h3></div>
+        <div className="card card-elevated" style={{ margin: 0, height: '100%' }}>
+          <div className="card-header" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Package size={18} className="text-primary" />
+            <h3 style={{ fontSize: '1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>Package Info</h3>
+          </div>
           <div className="card-body">
             {[
               ['Weight', `${shipment.weight} kg`],
-              ['Description', shipment.description || '—'],
+              ['Desc.', shipment.description || '—'],
               ['Hub', shipment.assignedHub?.name || '—'],
               ['Agent', shipment.assignedAgent?.user_id?.name || '—'],
-              ['Est. Delivery', shipment.estimatedDelivery ? new Date(shipment.estimatedDelivery).toLocaleDateString() : '—'],
+              ['Est.', shipment.estimatedDelivery ? new Date(shipment.estimatedDelivery).toLocaleDateString() : '—'],
             ].map(([k, v]) => (
               <div key={k} style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-                <span style={{ color: 'var(--text-muted)', minWidth: 90 }}>{k}</span>
-                <span>{v}</span>
+                <span style={{ color: 'var(--text-muted)', minWidth: 50 }}>{k}</span>
+                <span style={{ wordBreak: 'break-word' }}>{v}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* QR Code */}
-        <div className="card card-elevated">
-          <div className="card-header"><h3 style={{ fontSize: '1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>QR Code</h3></div>
-          <div className="card-body" style={{ textAlign: 'center' }}>
+        <div className="card card-elevated" style={{ margin: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <div className="card-header" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <QrCode size={18} className="text-muted" />
+            <h3 style={{ fontSize: '1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>QR Code</h3>
+          </div>
+          <div className="card-body" style={{ textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
             {shipment.qrCodeUrl ? (
               <a href={shipment.qrCodeUrl} target="_blank" rel="noreferrer">
-                <img src={shipment.qrCodeUrl} alt="QR Code" style={{ width: 160, height: 160, borderRadius: 8 }} />
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Click to open full size</div>
+                <img src={shipment.qrCodeUrl} alt="QR Code" style={{ width: 120, height: 120, borderRadius: 8 }} />
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Open full</div>
               </a>
             ) : (
-              <div className="empty-state" style={{ padding: '1.5rem' }}>
-                <div className="empty-icon">📱</div>
-                <div style={{ fontSize: '0.875rem' }}>QR not available</div>
+              <div className="empty-state" style={{ padding: '0.5rem' }}>
+                <QrCode size={24} className="text-muted" style={{ marginBottom: '0.5rem' }} />
+                <div style={{ fontSize: '0.75rem' }}>No QR</div>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Timeline */}
-      <div className="card card-elevated">
-        <div className="card-header"><h3 style={{ fontSize: '1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>📋 Event Timeline</h3></div>
-        <div className="card-body">
-          {events.length === 0 ? (
-            <div className="empty-state"><div className="empty-icon">📋</div>No events yet</div>
-          ) : (
-            <Timeline events={events} />
-          )}
-        </div>
-      </div>
-
-      {/* Proof of delivery */}
-      {shipment.currentStatus === 'Delivered' && shipment.proofOfDelivery?.url && (
-        <div className="card card-elevated" style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column' }}>
-          <div className="card-header"><h3 style={{ fontSize: '1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>Proof of Delivery</h3></div>
-          <div className="card-body" style={{ textAlign: 'center' }}>
-            <a href={shipment.proofOfDelivery.url} target="_blank" rel="noreferrer" style={{ display: 'inline-block' }}>
-              <img src={shipment.proofOfDelivery.url} alt="Proof of delivery" style={{ maxWidth: '100%', width: 320, borderRadius: 8, border: '1px solid var(--border)' }} />
-            </a>
-            {shipment.proofOfDelivery.note && (
-              <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{shipment.proofOfDelivery.note}</p>
+      {/* Bottom Section: Timeline & POD */}
+      <div style={{ display: 'grid', gridTemplateColumns: shipment.currentStatus === 'Delivered' && shipment.proofOfDelivery?.url ? '1fr 1fr' : '1fr', gap: '1.5rem', alignItems: 'start' }}>
+        
+        {/* Timeline */}
+        <div className="card card-elevated" style={{ margin: 0 }}>
+          <div className="card-header" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Clock size={18} className="text-primary" />
+            <h3 style={{ fontSize: '1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>Event Timeline</h3>
+          </div>
+          <div className="card-body">
+            {events.length === 0 ? (
+              <div className="empty-state">
+                <Clock size={24} className="text-muted" style={{ marginBottom: '0.5rem' }} />
+                No events yet
+              </div>
+            ) : (
+              <Timeline events={events} />
             )}
           </div>
         </div>
-      )}
+
+        {/* Proof of delivery */}
+        {shipment.currentStatus === 'Delivered' && shipment.proofOfDelivery?.url && (
+          <div className="card card-elevated" style={{ margin: 0, display: 'flex', flexDirection: 'column' }}>
+            <div className="card-header" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <ShieldCheck size={18} className="text-success" />
+              <h3 style={{ fontSize: '1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>Proof of Delivery</h3>
+            </div>
+            <div className="card-body" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', minHeight: '250px' }}>
+              <a href={shipment.proofOfDelivery.url} target="_blank" rel="noreferrer" style={{ display: 'inline-block' }}>
+                <img src={shipment.proofOfDelivery.url} alt="Proof of delivery" style={{ maxWidth: '100%', width: 320, borderRadius: 8, border: '1px solid var(--border)' }} />
+              </a>
+              {shipment.proofOfDelivery.note && (
+                <p style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{shipment.proofOfDelivery.note}</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Assign Hub Modal */}
       {assignHub && (

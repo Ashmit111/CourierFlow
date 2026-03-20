@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import StatusBadge from '@/components/shared/StatusBadge'
 import DataTable from '@/components/shared/DataTable'
@@ -8,34 +8,41 @@ import ConfirmModal from '@/components/shared/ConfirmModal'
 import { useToast } from '@/components/ui/Toast'
 import { Eye, Edit2, Trash2 } from 'lucide-react'
 
+const PAGE_SIZE = 20
+
 export default function CAShipmentsPage() {
   const toast = useToast()
-  const [shipments, setShipments] = useState([])
-  const [total, setTotal] = useState(0)
+  const [allShipments, setAllShipments] = useState([])
   const [page, setPage] = useState(1)
-  const [pages, setPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [hubs, setHubs] = useState([])
   const [agents, setAgents] = useState([])
   const [filters, setFilters] = useState({ status: '', hub: '', agent: '', search: '' })
   const [confirmDelete, setConfirmDelete] = useState(null)
 
-  const fetchShipments = useCallback(async (p = 1, f = filters) => {
+  async function fetchShipments() {
     setLoading(true)
-    const params = new URLSearchParams({ page: p })
-    if (f.status) params.set('status', f.status)
-    if (f.hub) params.set('hub', f.hub)
-    if (f.agent) params.set('agent', f.agent)
-    if (f.search) params.set('search', f.search)
 
-    const res = await fetch(`/api/ca/shipments?${params}`)
-    const data = await res.json()
-    setShipments(data.shipments || [])
-    setTotal(data.total || 0)
-    setPages(data.pages || 1)
-    setPage(p)
+    const firstRes = await fetch('/api/ca/shipments?page=1')
+    const firstData = await firstRes.json()
+
+    let combined = firstData.shipments || []
+    const totalPages = firstData.pages || 1
+
+    if (totalPages > 1) {
+      const remaining = []
+      for (let p = 2; p <= totalPages; p++) {
+        remaining.push(fetch(`/api/ca/shipments?page=${p}`).then((r) => r.json()))
+      }
+      const rest = await Promise.all(remaining)
+      for (const pageData of rest) {
+        combined = combined.concat(pageData.shipments || [])
+      }
+    }
+
+    setAllShipments(combined)
     setLoading(false)
-  }, [filters])
+  }
 
   useEffect(() => {
     fetchShipments()
@@ -48,11 +55,56 @@ export default function CAShipmentsPage() {
     })
   }, [])
 
+  const filteredShipments = useMemo(() => {
+    const search = filters.search.trim().toLowerCase()
+
+    return allShipments.filter((s) => {
+      if (filters.status && s.currentStatus !== filters.status) return false
+      if (filters.hub && String(s.assignedHub?._id || '') !== String(filters.hub)) return false
+      if (filters.agent && String(s.assignedAgent?._id || '') !== String(filters.agent)) return false
+
+      if (search) {
+        const haystack = [
+          s.trackingId,
+          s.sender?.name,
+          s.sender?.city,
+          s.receiver?.name,
+          s.receiver?.city,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+
+        if (!haystack.includes(search)) return false
+      }
+
+      return true
+    })
+  }, [allShipments, filters])
+
+  const total = filteredShipments.length
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  useEffect(() => {
+    if (page > pages) setPage(pages)
+  }, [page, pages])
+
+  const shipments = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE
+    return filteredShipments.slice(start, start + PAGE_SIZE)
+  }, [filteredShipments, page])
+
   function applyFilter(key, value) {
-    const f = { ...filters, [key]: value }
-    setFilters(f)
-    fetchShipments(1, f)
+    setFilters((prev) => ({ ...prev, [key]: value }))
+    setPage(1)
   }
+
+  function clearFilters() {
+    setFilters({ status: '', hub: '', agent: '', search: '' })
+    setPage(1)
+  }
+
+  const hasActiveFilters = !!(filters.search || filters.status || filters.hub || filters.agent)
 
   async function handleDeleteConfirm() {
     if (!confirmDelete) return;
@@ -99,6 +151,15 @@ export default function CAShipmentsPage() {
           <option value="">All Agents</option>
           {agents.map((a) => <option key={a._id} value={a._id}>{a.user_id?.name}</option>)}
         </select>
+        <button
+          type="button"
+          className="btn btn-outline btn-sm"
+          onClick={clearFilters}
+          disabled={!hasActiveFilters}
+          id="shipment-clear-filters"
+        >
+          Clear Filters
+        </button>
       </div>
 
       <DataTable
@@ -124,7 +185,7 @@ export default function CAShipmentsPage() {
                 <Link href={`/ca/shipments/${s._id}`} className="btn btn-ghost btn-sm btn-icon" title="View">
                   <Eye size={18} />
                 </Link>
-                {s.currentStatus === 'Created' && (
+                {s.currentStatus !== 'Delivered' && (
                   <Link href={`/ca/shipments/${s._id}/edit`} className="btn btn-ghost btn-sm btn-icon" title="Edit">
                     <Edit2 size={18} />
                   </Link>
@@ -140,9 +201,9 @@ export default function CAShipmentsPage() {
 
       {pages > 1 && (
         <div className="pagination" style={{ marginTop: '1rem' }}>
-          <button className="btn btn-outline btn-sm" disabled={page <= 1} onClick={() => fetchShipments(page - 1)}>← Prev</button>
+          <button className="btn btn-outline btn-sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>← Prev</button>
           <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', padding: '0 0.5rem' }}>Page {page} of {pages}</span>
-          <button className="btn btn-outline btn-sm" disabled={page >= pages} onClick={() => fetchShipments(page + 1)}>Next →</button>
+          <button className="btn btn-outline btn-sm" disabled={page >= pages} onClick={() => setPage((p) => Math.min(pages, p + 1))}>Next →</button>
         </div>
       )}
 
