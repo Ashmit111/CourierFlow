@@ -198,7 +198,7 @@ proxy.js            -> Request proxy (auth, RBAC, rate limit, header injection)
 
 ```bash
 git clone [repo-url]
-cd saas2
+cd courierflow
 npm install
 ```
 
@@ -213,7 +213,6 @@ NODE_ENV=development
 
 # Public/base URLs
 APP_URL=http://localhost:3000
-NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 # Upstash Redis (cache)
 UPSTASH_REDIS_REST_URL=https://<instance>.upstash.io
@@ -255,13 +254,30 @@ npm run dev
 Open http://localhost:3000
 
 ## 8. Test Credentials
+```text
+Super Admin
+Email:    admin@platform.com
+Password: Admin@1234
 
+Company Admin
+Email:    admin@jio.com
+Email:    admin@tata.com
+Email:    admin@hcl.com
+Email:    admin@fixotech
+Password: Admin@1234
+
+Agent
+Email:    agent@raj.com
+Email:    agent@rahul.com
+Email:    agent@chetan.com
+Password: Admin@1234
+```
 
 
 ## 9. API Documentation
 
 ```text
-Postman Collection: [TO BE FILLED]
+Postman Collection: https://documenter.getpostman.com/view/43347512/2sBXijHrPR
 ```
 
 ## 10. Deployed Link
