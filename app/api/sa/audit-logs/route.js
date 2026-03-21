@@ -22,15 +22,73 @@ export async function GET(request) {
     }
 
     await connectDB()
-    const [logs, total] = await Promise.all([
-      AuditLog.find(filter)
-        .populate('actor_id', 'name email role')
-        .populate('tenant_id', 'name domain')
-        .sort({ timestamp: -1 })
-        .skip(skip)
-        .limit(limit),
-      AuditLog.countDocuments(filter),
+
+    // Hide logs with deleted actor/tenant references while keeping legitimate
+    // global logs where tenant_id is null.
+    const basePipeline = [
+      { $match: filter },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'actor_id',
+          foreignField: '_id',
+          as: 'actor',
+        },
+      },
+      {
+        $lookup: {
+          from: 'tenants',
+          localField: 'tenant_id',
+          foreignField: '_id',
+          as: 'tenant',
+        },
+      },
+      {
+        $match: {
+          $expr: {
+            $and: [
+              { $gt: [{ $size: '$actor' }, 0] },
+              {
+                $or: [
+                  { $eq: ['$tenant_id', null] },
+                  { $gt: [{ $size: '$tenant' }, 0] },
+                ],
+              },
+            ],
+          },
+        },
+      },
+    ]
+
+    const [logs, totalResult] = await Promise.all([
+      AuditLog.aggregate([
+        ...basePipeline,
+        { $sort: { timestamp: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 1,
+            action: 1,
+            entity: 1,
+            entity_id: 1,
+            metadata: 1,
+            timestamp: 1,
+            actor_id: { $arrayElemAt: ['$actor', 0] },
+            tenant_id: {
+              $cond: [
+                { $eq: ['$tenant_id', null] },
+                null,
+                { $arrayElemAt: ['$tenant', 0] },
+              ],
+            },
+          },
+        },
+      ]),
+      AuditLog.aggregate([...basePipeline, { $count: 'total' }]),
     ])
+
+    const total = totalResult[0]?.total || 0
 
     return Response.json({ logs, total, page, pages: Math.ceil(total / limit) })
   } catch (err) {
