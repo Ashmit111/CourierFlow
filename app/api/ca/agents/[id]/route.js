@@ -70,7 +70,7 @@ export async function DELETE(request, { params }) {
     const agent = await Agent.findOneAndDelete({ _id: id, tenant_id: tenantId })
     if (!agent) return Response.json({ error: 'Agent not found' }, { status: 404 })
 
-    await User.findByIdAndUpdate(agent.user_id, { isActive: false })
+    await User.findByIdAndDelete(agent.user_id)
     await redis.del(`agents:${tenantId}`)
     await writeAuditLog({ actor_id: h.get('x-user-id'), tenant_id: tenantId, action: 'DELETE', entity: 'Agent', entity_id: id, metadata: {} })
 

@@ -268,7 +268,7 @@ export default function SATenantsPage() {
         onClose={() => setConfirmDelete(null)}
         onConfirm={executeDelete}
         title="Delete Tenant"
-        message={`Delete "${confirmDelete?.name}"? This will deactivate all their users.`}
+        message={`Delete "${confirmDelete?.name}"? This will permanently delete their users, agents, hubs, shipments, and related records.`}
         confirmText="Delete"
         isDanger={true}
       />

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { verifyAccess } from './lib/jwt'
+import { verifyAccess, verifyRefresh, signAccess } from './lib/jwt'
 
 // Rate limiting store (in-memory, resets on server restart)
 const rateLimitMap = new Map()
@@ -12,7 +12,35 @@ function rateLimit(ip, limit, windowMs) {
   rateLimitMap.set(ip, requests)
   return requests.length <= limit
 }
+//start
+function getSessionFromCookies(request) {
+  const accessToken = request.cookies.get('access_token')?.value
+  const refreshToken = request.cookies.get('refresh_token')?.value
 
+  if (accessToken) {
+    try {
+      const payload = verifyAccess(accessToken)
+      return { payload, refreshedAccessToken: null }
+    } catch {
+      // Fall through to refresh token path.
+    }
+  }
+
+  if (!refreshToken) return null
+
+  try {
+    const payload = verifyRefresh(refreshToken)
+    const refreshedAccessToken = signAccess({
+      userId: payload.userId,
+      role: payload.role,
+      tenant_id: payload.tenant_id,
+    })
+    return { payload, refreshedAccessToken }
+  } catch {
+    return null
+  }
+}
+// end
 export async function proxy(request) {
   const { pathname } = request.nextUrl
   const ip = request.headers.get('x-forwarded-for') || 'anonymous'
@@ -34,19 +62,12 @@ export async function proxy(request) {
     pathname.startsWith('/api/upload')
 
   if (isProtectedApi) {
-    const token = request.cookies.get('access_token')?.value
-
-    if (!token) {
+    const session = getSessionFromCookies(request)
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    let payload
-    try {
-      payload = verifyAccess(token)
-    } catch {
-      return NextResponse.json({ error: 'Unauthorized — invalid or expired token' }, { status: 401 })
-    }
-
+    const { payload, refreshedAccessToken } = session
     const { role, userId, tenant_id } = payload
 
     // RBAC enforcement
@@ -66,7 +87,17 @@ export async function proxy(request) {
     headers.set('x-role', role)
     if (tenant_id) headers.set('x-tenant-id', tenant_id)
 
-    return NextResponse.next({ request: { headers } })
+    const response = NextResponse.next({ request: { headers } })
+    if (refreshedAccessToken) {
+      response.cookies.set('access_token', refreshedAccessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 15 * 60,
+        path: '/',
+      })
+    }
+    return response
   }
 
   // Auth redirect for protected pages
@@ -76,29 +107,36 @@ export async function proxy(request) {
     pathname.startsWith('/ag')
 
   if (isProtectedPage) {
-    const token = request.cookies.get('access_token')?.value
-
-    if (!token) {
+    const session = getSessionFromCookies(request)
+    if (!session) {
       return NextResponse.redirect(new URL('/login', request.url))
     }
 
-    try {
-      const payload = verifyAccess(token)
-      const { role } = payload
+    const { payload, refreshedAccessToken } = session
+    const { role } = payload
 
-      // Redirect to correct dashboard if wrong role visits wrong section
-      if (pathname.startsWith('/sa') && role !== 'SA') {
-        return NextResponse.redirect(new URL('/login', request.url))
-      }
-      if (pathname.startsWith('/ca') && role !== 'CA') {
-        return NextResponse.redirect(new URL('/login', request.url))
-      }
-      if (pathname.startsWith('/ag') && role !== 'AG') {
-        return NextResponse.redirect(new URL('/login', request.url))
-      }
-    } catch {
+    // Redirect to correct dashboard if wrong role visits wrong section
+    if (pathname.startsWith('/sa') && role !== 'SA') {
       return NextResponse.redirect(new URL('/login', request.url))
     }
+    if (pathname.startsWith('/ca') && role !== 'CA') {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+    if (pathname.startsWith('/ag') && role !== 'AG') {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+
+    const response = NextResponse.next()
+    if (refreshedAccessToken) {
+      response.cookies.set('access_token', refreshedAccessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 15 * 60,
+        path: '/',
+      })
+    }
+    return response
   }
 
   return NextResponse.next()

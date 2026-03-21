@@ -2,8 +2,10 @@ import connectDB from '@/lib/db'
 import Tenant from '@/models/Tenant'
 import User from '@/models/User'
 import Shipment from '@/models/Shipment'
+import ShipmentEvent from '@/models/ShipmentEvent'
 import Hub from '@/models/Hub'
 import Agent from '@/models/Agent'
+import Notification from '@/models/Notification'
 import redis from '@/lib/redis'
 import { updateTenantSchema } from '@/lib/validations'
 import { generateUniqueTenantDomain } from '@/lib/tenantDomain'
@@ -87,17 +89,51 @@ export async function DELETE(request, { params }) {
   try {
     const { id } = await params
     await connectDB()
-    const tenant = await Tenant.findByIdAndDelete(id)
+    const tenant = await Tenant.findById(id)
     if (!tenant) return Response.json({ error: 'Tenant not found' }, { status: 404 })
 
-    // Also deactivate all users of this tenant
-    await User.updateMany({ tenant_id: id }, { isActive: false })
+    const [shipmentEventsResult, shipmentsResult, hubsResult, agentsResult, usersResult, notificationsResult] = await Promise.all([
+      ShipmentEvent.deleteMany({ tenant_id: id }),
+      Shipment.deleteMany({ tenant_id: id }),
+      Hub.deleteMany({ tenant_id: id }),
+      Agent.deleteMany({ tenant_id: id }),
+      User.deleteMany({ tenant_id: id }),
+      Notification.deleteMany({ tenant_id: id }),
+    ])
+
+    await Tenant.deleteOne({ _id: id })
     await redis.del(CACHE_KEY)
 
     const h = await headers()
-    await writeAuditLog({ actor_id: h.get('x-user-id'), tenant_id: id, action: 'DELETE', entity: 'Tenant', entity_id: id, metadata: {} })
+    await writeAuditLog({
+      actor_id: h.get('x-user-id'),
+      tenant_id: id,
+      action: 'DELETE',
+      entity: 'Tenant',
+      entity_id: id,
+      metadata: {
+        deleted: {
+          shipmentEvents: shipmentEventsResult.deletedCount || 0,
+          shipments: shipmentsResult.deletedCount || 0,
+          hubs: hubsResult.deletedCount || 0,
+          agents: agentsResult.deletedCount || 0,
+          users: usersResult.deletedCount || 0,
+          notifications: notificationsResult.deletedCount || 0,
+        },
+      },
+    })
 
-    return Response.json({ message: 'Tenant deleted successfully' })
+    return Response.json({
+      message: 'Tenant and all associated data deleted successfully',
+      deleted: {
+        shipmentEvents: shipmentEventsResult.deletedCount || 0,
+        shipments: shipmentsResult.deletedCount || 0,
+        hubs: hubsResult.deletedCount || 0,
+        agents: agentsResult.deletedCount || 0,
+        users: usersResult.deletedCount || 0,
+        notifications: notificationsResult.deletedCount || 0,
+      },
+    })
   } catch (err) {
     console.error(err)
     return Response.json({ error: 'Internal server error' }, { status: 500 })

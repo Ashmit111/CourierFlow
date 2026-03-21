@@ -64,20 +64,6 @@ function AgentModal({ agent, onClose, onSaved }) {
             )}
 
             <div className="form-group">
-              <label className="form-label">Phone</label>
-              <input
-                className={`form-input ${errors.phone ? 'error' : ''}`}
-                type="tel"
-                inputMode="numeric"
-                maxLength={10}
-                pattern="[0-9]{10}"
-                {...register('phone')}
-                placeholder="9876543210"
-              />
-              {errors.phone && <span className="form-error">⚠ {errors.phone.message}</span>}
-            </div>
-
-            <div className="form-group">
               <label className="form-label">Availability</label>
               <select className="form-select" {...register('isAvailable', { setValueAs: (v) => v === 'true' || v === true })}>
                 <option value="true">Available</option>
@@ -117,8 +103,8 @@ export default function CAAgentsPage() {
     if (!confirmDelete) return;
     const { id } = confirmDelete;
     const res = await fetch(`/api/ca/agents/${id}`, { method: 'DELETE' })
-    if (res.ok) { toast.success('Agent deactivated'); fetchAgents() }
-    else toast.error('Failed to deactivate agent')
+    if (res.ok) { toast.success('Agent deleted'); fetchAgents() }
+    else toast.error('Failed to delete agent')
     setConfirmDelete(null);
   }
 
@@ -194,7 +180,7 @@ export default function CAAgentsPage() {
                 <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setModal({ type: 'edit', agent: a })} title="Edit">
                   <Edit2 size={18} />
                 </button>
-                <button className="btn btn-ghost btn-sm btn-icon text-danger" onClick={() => setConfirmDelete({ id: a._id, name: a.user_id?.name || 'Unknown' })} title="Deactivate">
+                <button className="btn btn-ghost btn-sm btn-icon text-danger" onClick={() => setConfirmDelete({ id: a._id, name: a.user_id?.name || 'Unknown' })} title="Delete">
                   <Ban size={18} />
                 </button>
               </div>
@@ -215,9 +201,9 @@ export default function CAAgentsPage() {
         isOpen={!!confirmDelete}
         onClose={() => setConfirmDelete(null)}
         onConfirm={handleDeleteConfirm}
-        title="Deactivate Agent"
-        message={`Are you sure you want to deactivate "${confirmDelete?.name}"? You can reactivate them later.`}
-        confirmText="Deactivate"
+        title="Delete Agent"
+        message={`Delete "${confirmDelete?.name}"? Confirm Deleting Agent.`}
+        confirmText="Delete"
       />
     </div>
   )
